@@ -1,0 +1,1 @@
+// Componente React de Informe ASTAP - render principal insertado desde canvas
