@@ -1,53 +1,59 @@
-import React, { useState, useRef } from "react";
-import SignatureCanvas from "react-signature-canvas";
 
-export default function App() {
-  const [cliente, setCliente] = useState("");
-  const [codigoInterno, setCodigoInterno] = useState("");
-  const [fechaServicio, setFechaServicio] = useState("");
-  const [direccion, setDireccion] = useState("");
-  const [referencia, setReferencia] = useState("");
-  const [personalTecnico, setPersonalTecnico] = useState("");
-  const [tecnicoApoyo, setTecnicoApoyo] = useState("");
-  const [actividades, setActividades] = useState([{
-    descripcion: '',
-    evidencia: '',
-    imagen: null
-  }]);
-  const [pdfURL, setPdfURL] = useState(null);
-  const [pdfList, setPdfList] = useState([]);
+import React, { useState, useRef } from 'react';
+import SignatureCanvas from 'react-signature-canvas';
+import html2canvas from 'html2canvas';
+import jsPDF from 'jspdf';
 
-  const firmaAstapRef = useRef(null);
-  const firmaClienteRef = useRef(null);
-  const formRef = useRef(null);
+const App = () => {
 
-  const handleActividadImage = (e, index) => {
-    const file = e.target.files[0];
-    if (!file) return;
-    const reader = new FileReader();
-    reader.onloadend = () => {
-      const updated = [...actividades];
-      updated[index].imagen = reader.result;
-      setActividades(updated);
-    };
-    reader.readAsDataURL(file);
-  };
+const generatePDF = async () => {
+  const element = formRef.current;
+  const canvas = await html2canvas(element, { scale: 2 });
+  const imgData = canvas.toDataURL('image/png');
+  const pdf = new jsPDF('p', 'mm', 'a4');
+  const pageWidth = pdf.internal.pageSize.getWidth();
+  const pageHeight = pdf.internal.pageSize.getHeight();
+  const imgProps = pdf.getImageProperties(imgData);
+  const imgRatio = imgProps.width / imgProps.height;
+  const pdfWidth = pageWidth;
+  const pdfHeight = pageWidth / imgRatio;
 
-  const generatePDF = () => {
-    alert("Aquí se genera el PDF con html2canvas y jsPDF en la versión final.");
-  };
+  let position = 0;
+  if (pdfHeight < pageHeight) {
+    pdf.addImage(imgData, 'PNG', 0, position, pdfWidth, pdfHeight);
+  } else {
+    let remainingHeight = pdfHeight;
+    let page = 0;
+    while (remainingHeight > 0) {
+      const sourceY = page * pageHeight * imgProps.height / pdfHeight;
+      const pageCanvas = document.createElement('canvas');
+      pageCanvas.width = imgProps.width;
+      pageCanvas.height = imgProps.height * pageHeight / pdfHeight;
+      const ctx = pageCanvas.getContext('2d');
+      ctx.drawImage(canvas, 0, sourceY, imgProps.width, pageCanvas.height, 0, 0, imgProps.width, pageCanvas.height);
+      const pageData = pageCanvas.toDataURL('image/png');
+      if (page > 0) pdf.addPage();
+      pdf.addImage(pageData, 'PNG', 0, 0, pageWidth, pageHeight);
+      remainingHeight -= pageHeight;
+      page++;
+    }
+  }
 
-  return (
-import React from "react";
-import SignatureCanvas from "react-signature-canvas";
+  const fileName = `Informe_ASTAP_${new Date().toISOString().split('T')[0]}.pdf`;
+  pdf.save(fileName);
 
-export default function FormularioASTAP(props) {
-  return (
-    <div>
-      {/* Tu formulario JSX completo aquí (este archivo se regenerará completo si lo deseas) */}
-    </div>
-  );
+  const blob = pdf.output('blob');
+  const url = URL.createObjectURL(blob);
+  setPdfURL(url);
+  setPdfList([...pdfList, { nombre: fileName, url }]);
+};
+
+
+<div ref={formRef} className="max-w-5xl mx-auto p-6 bg-white shadow-lg rounded-md text-sm">
+  <h1 className="text-3xl font-bold text-center text-blue-900 mb-6">INFORME DE TRABAJO Ú SERVICIO</h1>
+  ...
+</div>
+
 }
 
-  );
-}
+export default App;
